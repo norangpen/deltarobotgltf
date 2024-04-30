@@ -4,9 +4,10 @@ import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.118/examples/js
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.118/examples/jsm/controls/OrbitControls.js';
 
 let camera, scene, renderer, clock;
-let mixer;
-const animations = [];
+let mixer; // Animation mixer to manage animations
+const animations = []; // To store animation actions
 let controls;
+let staticModel; // To hold the reference to the static model
 
 function init() {
     scene = new THREE.Scene();
@@ -21,21 +22,15 @@ function init() {
     document.body.appendChild(renderer.domElement);
 
     controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true; // Optional, but for a smoother control experience
+    controls.enableDamping = true;
     controls.dampingFactor = 0.1;
 
     setupLighting();
 
     loadStaticModel();
-    loadAnimationModel();
+    // Note: loadAnimationModel() is not called here, it will be triggered by a button
 
-    // Setup the event listener for the play button within the init function
-    document.getElementById('playButton').addEventListener('click', () => {
-        animations.forEach((anim) => {
-            anim.stop();  // Stop all animations
-            anim.play();  // Replay all animations (for simplicity in this example)
-        });
-    });
+    document.getElementById('playButton').addEventListener('click', playAnimations);
 }
 
 function setupLighting() {
@@ -50,7 +45,8 @@ function setupLighting() {
 function loadStaticModel() {
     const loader = new GLTFLoader();
     loader.load('models/StaticModel.gltf', (gltf) => {
-        scene.add(gltf.scene);
+        staticModel = gltf.scene; // Store the loaded scene
+        scene.add(staticModel);
         console.log('Static model loaded.');
     }, undefined, function (error) {
         console.error('Error loading the static model:', error);
@@ -60,7 +56,7 @@ function loadStaticModel() {
 function loadAnimationModel() {
     const loader = new GLTFLoader();
     loader.load('models/Animations.gltf', (gltf) => {
-        mixer = new THREE.AnimationMixer(gltf.scene); // Assuming the static model needs to be animated
+        mixer = new THREE.AnimationMixer(staticModel); // Assume animations are to be applied to the static model
         gltf.animations.forEach((clip) => {
             const action = mixer.clipAction(clip);
             animations.push(action); // Store the action for use later
@@ -71,6 +67,18 @@ function loadAnimationModel() {
     });
 }
 
+function playAnimations() {
+    if (animations.length === 0) { // If animations haven't been loaded, load them
+        loadAnimationModel();
+    } else { // If already loaded, play them
+        animations.forEach(animation => {
+            animation.reset(); // Reset to start from beginning
+            animation.play();
+        });
+        console.log('Animations played.');
+    }
+}
+
 function animate() {
     requestAnimationFrame(animate);
 
@@ -79,7 +87,7 @@ function animate() {
         mixer.update(delta);
     }
 
-    controls.update();  // Only required if controls.enableDamping or controls.autoRotate are set to true
+    controls.update();
 
     renderer.render(scene, camera);
 }
@@ -93,4 +101,3 @@ window.addEventListener('resize', () => {
 
 init();
 animate();
-
